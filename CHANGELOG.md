@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.1 — 2026-11-17
+- New app icon (a pink dot-matrix @, made with Gemini) as the browser tab and home-screen icon, replacing the code-drawn one.
+
 ## 1.2.0 — 2026-11-17
 - One big Download button opens a save popup: a bright "Buy me a coffee" button on top, then "or just download it, free" with quiet buttons for PNG, animated SVG and video (the video button shows its length). Replaces the three save buttons and the after-download popup.
 - While a video records, the Download button shows the countdown.
