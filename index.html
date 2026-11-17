@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASCII Lab: turn images, GIFs and videos into animated ASCII art</title>
+<meta name="description" content="Free ASCII art maker by Adam Allouche. Turn pictures, GIFs, videos or your webcam into colored, animated ASCII. Runs in your browser: nothing is uploaded.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ASCII Lab: animated ASCII art from any image, GIF or video">
+<meta property="og:description" content="Free, runs in your browser, nothing uploaded. Made by Adam Allouche.">
+<meta property="og:image" content="https://ascii-lab-adam.vercel.app/og.png">
+<meta property="og:url" content="https://ascii-lab-adam.vercel.app/">
+<link rel="canonical" href="https://ascii-lab-adam.vercel.app/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0b10'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='monospace' font-weight='700' font-size='20' fill='%23ff5fa2'%3E@%3C/text%3E%3C/svg%3E">
+<style>
+  :root { --bg: #0b0b10; --panel: #15151c; --line: #262633; --text: #ecebf3; --muted: #8e8ca3; --accent: #ff5fa2; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 ui-sans-serif, system-ui, "Segoe UI", sans-serif; }
+  body { display: grid; grid-template-columns: 310px 1fr; min-height: 100vh; }
+  aside { background: var(--panel); border-right: 1px solid var(--line); padding: 16px; overflow-y: auto; max-height: 100vh; display: grid; gap: 13px; align-content: start; }
+  h1 { font: 700 19px ui-monospace, Consolas, monospace; margin: 0; letter-spacing: 1px; }
+  h1 span { color: var(--accent); }
+  .note { color: var(--muted); font-size: 12px; margin: 0; }
+  label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+  label b { color: var(--text); font-weight: 600; display: flex; justify-content: space-between; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  select, input[type=text] { width: 100%; background: #0f0f15; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font: inherit; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row input[type=color] { width: 42px; height: 30px; border: 1px solid var(--line); border-radius: 6px; background: none; padding: 2px; }
+  button { background: #22222d; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: 600 12px ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.main { background: var(--accent); color: #0b0b10; border-color: var(--accent); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sep { height: 1px; background: var(--line); }
+  .msg { font-size: 12px; padding: 8px 10px; border-radius: 8px; background: #2a1720; color: #ffc2d9; border: 1px solid #4a2333; }
+  main { position: relative; display: grid; place-items: center; overflow: auto; padding: 16px; }
+  canvas { max-width: 100%; max-height: calc(100vh - 32px); }
+  #drop { position: absolute; inset: 24px; border: 2px dashed var(--line); border-radius: 16px; display: grid; place-items: center; color: var(--muted); text-align: center; pointer-events: none; padding: 20px; }
+  #drop big { display: block; font: 700 22px ui-monospace, Consolas, monospace; color: var(--text); margin-bottom: 6px; }
+  body.dragging #drop { border-color: var(--accent); color: var(--text); display: grid !important; }
+  .credit { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+  .credit a { color: var(--text); }
+  @media (max-width: 800px) {
+    body { grid-template-columns: 1fr; }
+    aside { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); order: 2; }
+    main { order: 1; min-height: 50vh; }
+  }
+</style>
+</head>
+<body>
+<aside>
+  <div>
+    <h1>ASCII <span>LAB</span></h1>
+    <p class="note">Pictures, GIFs, videos or your webcam, as animated ASCII art. Runs in your browser: nothing is uploaded.</p>
+  </div>
+  <div class="grid2">
+    <button class="main" id="pick">Open file</button>
+    <button id="cam">Use webcam</button>
+    <button id="sample" style="grid-column:span 2">Try a sample</button>
+  </div>
+  <input type="file" id="file" accept="image/*,video/*" hidden>
+  <p class="msg" id="msg" hidden></p>
+  <div class="row" id="mediaRow" hidden><button id="play">Pause</button><span class="note" id="mediaInfo"></span></div>
+
+  <label><b>Detail <span id="colsV"></span></b><input type="range" id="cols" min="40" max="260" value="140"></label>
+  <label><b>Contrast <span id="conV"></span></b><input type="range" id="con" min="50" max="250" value="120"></label>
+  <label><b>Brightness <span id="briV"></span></b><input type="range" id="bri" min="-80" max="80" value="0"></label>
+  <label>Characters
+    <select id="set">
+      <option value=" .:-=+*#%@">classic  .:-=+*#%@</option>
+      <option value=" .,:;i1tfLCG08@">fine  .,:;i1tfLCG08@</option>
+      <option value=" ░▒▓█">blocks  ░▒▓█</option>
+      <option value=" ·•●">dots  ·•●</option>
+      <option value=" ｰｨｸｼﾂﾐﾑﾘﾜｱｳｶｹｻﾄﾅﾆﾈﾉﾊﾋﾎﾏﾓﾗﾙﾚﾛ">katakana (matrix)</option>
+      <option value=" 01">binary  01</option>
+      <option value="custom">custom…</option>
+    </select>
+  </label>
+  <input type="text" id="custom" placeholder="your characters, light to dark" hidden>
+  <label>Color
+    <select id="color">
+      <option value="image">real colors</option>
+      <option value="tint">one tint</option>
+      <option value="grad">two-color gradient</option>
+    </select>
+  </label>
+  <div class="row"><input type="color" id="c1" value="#ff5fa2" title="tint / bright color"><input type="color" id="c2" value="#5ce1ff" title="dark color"><span class="note">tint / gradient</span></div>
+  <div class="row"><input type="color" id="bg" value="#07070c" title="background"><span class="note">background</span>
+    <label class="row" style="margin-left:auto;display:flex"><input type="checkbox" id="inv"> invert</label></div>
+  <label><b>Glow <span id="glowV"></span></b><input type="range" id="glow" min="0" max="20" value="4"></label>
+  <div class="sep"></div>
+  <label>Effect
+    <select id="anim">
+      <option value="none">still (no effect)</option>
+      <option value="shimmer" selected>shimmer wave</option>
+      <option value="glitch">glitch</option>
+      <option value="decode">decode (random → image)</option>
+      <option value="rain">rain (characters fall into place)</option>
+      <option value="breathe">breathe</option>
+    </select>
+  </label>
+  <label><b>Speed <span id="spdV"></span></b><input type="range" id="spd" min="1" max="30" value="10"></label>
+  <div class="sep"></div>
+  <div class="grid2">
+    <button id="png">Save PNG</button>
+    <button id="svg">Save SVG</button>
+    <button id="rec" style="grid-column:span 2">Record video (WebM)</button>
+  </div>
+  <p class="note">Drag a file anywhere, or paste an image with Ctrl+V.</p>
+  <div class="credit">Made by <b>Adam Allouche</b> · <a href="https://github.com/Allouche-Adam" target="_blank" rel="noopener">GitHub</a> · <a href="https://buymeacoffee.com/thock" target="_blank" rel="noopener">buy me a coffee</a></div>
+</aside>
+<main>
+  <canvas id="out" aria-label="ASCII art output"></canvas>
+  <div id="drop"><div><big>drop a picture, GIF or video</big>or press “Open file”, “Use webcam” or “Try a sample”</div></div>
+</main>
+
+<script>
+// ---------- how it works ----------
+// 1. A "source" gives the current picture: a still image, a GIF frame, a video frame or the webcam.
+// 2. That picture is shrunk to COLS x ROWS pixels: one pixel per character cell.
+// 3. Each cell's brightness picks a character (from the chosen set, light to dark)
+//    and its color comes from the picture, a tint or a gradient.
+// 4. Every animation frame redraws the characters; effects only change which
+//    character or color is drawn, or where.
+const $ = (id) => document.getElementById(id);
+const out = $("out"), ctx = out.getContext("2d");
+const CHAR_ASPECT = 0.55, FONT_PX = 12; // a character is about half as wide as it is tall
+const small = document.createElement("canvas"), sg = small.getContext("2d", { willReadFrequently: true });
+
+let source = null;      // { kind: "image"|"gif"|"video", w, h, draw(now) -> drawable }
+let cells = null, COLS = 0, ROWS = 0, start = performance.now(), paused = false, lastSample = 0;
+let camStream = null;
+
+function message(text) { $("msg").textContent = text || ""; $("msg").hidden = !text; }
+
+function charset() {
+  const v = $("set").value;
+  return v === "custom" ? " " + (($("custom").value || ".:*#@").replace(/^ +/, "")) : v;
+}
+
+// Turn the source's current picture into cells.
+function sample(now) {
+  if (!source) return;
+  const pic = source.draw(now);
+  if (!pic) return;
+  COLS = +$("cols").value;
+  ROWS = Math.max(1, Math.round((source.h / source.w) * COLS * CHAR_ASPECT));
+  if (small.width !== COLS || small.height !== ROWS) { small.width = COLS; small.height = ROWS; }
+  sg.clearRect(0, 0, COLS, ROWS);
+  sg.drawImage(pic, 0, 0, COLS, ROWS);
+  const data = sg.getImageData(0, 0, COLS, ROWS).data;
+  const con = +$("con").value / 100, bri = +$("bri").value, inv = $("inv").checked;
+  cells = new Array(COLS * ROWS);
+  for (let i = 0; i < COLS * ROWS; i++) {
+    const r = data[i * 4], g = data[i * 4 + 1], b = data[i * 4 + 2], a = data[i * 4 + 3] / 255;
+    let l = ((0.299 * r + 0.587 * g + 0.114 * b) - 128) * con + 128 + bri;
+    l = Math.max(0, Math.min(255, l * a)) / 255;
+    if (inv) l = 1 - l;
+    cells[i] = { l, r, g, b };
+  }
+  const W = Math.round(COLS * FONT_PX * CHAR_ASPECT * 2), H = ROWS * FONT_PX * 2;
+  if (out.width !== W || out.height !== H) { out.width = W; out.height = H; }
+}
+
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+function colorOf(cell, l) {
+  const mode = $("color").value;
+  if (mode === "image") return `rgb(${cell.r},${cell.g},${cell.b})`;
+  if (mode === "tint") { const [r, g, b] = hex($("c1").value); return `rgba(${r},${g},${b},${(0.35 + l * 0.65).toFixed(2)})`; }
+  const [a1, a2, a3] = hex($("c2").value), [b1, b2, b3] = hex($("c1").value);
+  return `rgb(${a1 + (b1 - a1) * l | 0},${a2 + (b2 - a2) * l | 0},${a3 + (b3 - a3) * l | 0})`;
+}
+const rnd = (i, t) => { const x = Math.sin(i * 12.9898 + t * 78.233) * 43758.5453; return x - Math.floor(x); };
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (!source) return;
+  // moving sources are re-read about 30 times a second; a still image only when settings change
+  if (source.kind !== "image" && !paused && now - lastSample > 33) { sample(now); lastSample = now; }
+  if (!cells) return;
+  const set = charset(), n = set.length - 1;
+  const t = ((now - start) / 1000) * (+$("spd").value / 10), anim = $("anim").value;
+  const sx = FONT_PX * CHAR_ASPECT * 2, sy = FONT_PX * 2;
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = $("bg").value; ctx.fillRect(0, 0, out.width, out.height);
+  ctx.font = `700 ${FONT_PX * 2}px ui-monospace, Consolas, monospace`;
+  ctx.textBaseline = "top";
+  ctx.shadowBlur = +$("glow").value * 2;
+  for (let y = 0; y < ROWS; y++) {
+    let dx = 0;
+    if (anim === "glitch" && rnd(y, Math.floor(t * 6)) > 0.93) dx = (rnd(y + 7, Math.floor(t * 6)) - 0.5) * 60;
+    for (let x = 0; x < COLS; x++) {
+      const cell = cells[y * COLS + x];
+      if (!cell) continue;
+      let l = cell.l, yy = y * sy;
+      if (anim === "shimmer") l = Math.min(1, l + Math.max(0, Math.sin((x + y * 0.6) * 0.08 - t * 3)) * 0.35 * l);
+      if (anim === "breathe") l = l * (0.75 + 0.25 * Math.sin(t * 2));
+      let ch = set[Math.round(l * n)];
+      if (anim === "decode") { const p = (t % 6) / 4; if (rnd(x + y * COLS, 1) > p) ch = set[1 + Math.floor(rnd(x * 3 + y, Math.floor(t * 12)) * n)] || ch; }
+      if (anim === "rain") {
+        const cycle = 7, land = (rnd(x, 2) * 0.6 + (y / ROWS) * 0.4) * (cycle - 2), local = t % cycle;
+        if (local < land) { yy = (local / land) * y * sy - sy * 3; if (yy < 0) continue; }
+      }
+      if (!ch || ch === " ") continue;
+      const col = colorOf(cell, l);
+      ctx.fillStyle = col; ctx.shadowColor = col;
+      ctx.fillText(ch, x * sx + dx, yy);
+    }
+  }
+}
+requestAnimationFrame(frame);
+
+// ---------- sources ----------
+function stopCurrent() {
+  if (source && source.stop) source.stop();
+  if (camStream) { camStream.getTracks().forEach((t) => t.stop()); camStream = null; }
+  source = null; cells = null; paused = false;
+  $("play").textContent = "Pause"; $("mediaRow").hidden = true; message("");
+}
+function ready(src, info) {
+  source = src; start = performance.now(); $("drop").hidden = true;
+  $("mediaRow").hidden = src.kind === "image";
+  $("mediaInfo").textContent = info || "";
+  sample(performance.now());
+}
+
+function openImage(url) {
+  const i = new Image();
+  i.onload = () => ready({ kind: "image", w: i.naturalWidth, h: i.naturalHeight, draw: () => i });
+  i.onerror = () => message("That picture couldn't be opened.");
+  i.src = url;
+}
+
+// GIFs: decode every frame with the browser's ImageDecoder (Chrome / Edge).
+// Without it, say so clearly: drawing a GIF any other way only gives its first frame.
+async function openGif(file) {
+  if (!("ImageDecoder" in window)) { message("Animated GIFs need Chrome or Edge (Firefox can't decode GIF frames yet). Or convert the GIF to MP4 and open that."); return; }
+  try {
+    const dec = new ImageDecoder({ data: await file.arrayBuffer(), type: file.type });
+    await dec.tracks.ready;
+    const count = dec.tracks.selectedTrack.frameCount, frames = [];
+    let total = 0;
+    for (let i = 0; i < count; i++) {
+      const { image } = await dec.decode({ frameIndex: i });
+      const d = Math.max(20, (image.duration || 100000) / 1000);
+      frames.push({ bmp: await createImageBitmap(image), at: total }); total += d;
+      image.close();
+    }
+    let pauseAt = 0;
+    const src = { kind: "gif", w: frames[0].bmp.width, h: frames[0].bmp.height, duration: total / 1000,
+      draw: (now) => { const tt = (paused ? pauseAt : now - start) % total; let f = frames[0]; for (const fr of frames) if (fr.at <= tt) f = fr; return f.bmp; },
+      pause: (p) => { if (p) pauseAt = performance.now() - start; else start = performance.now() - pauseAt; } };
+    ready(src, `GIF · ${count} frames · ${(total / 1000).toFixed(1)} s`);
+  } catch (e) { message("That GIF couldn't be read: " + e.message); }
+}
+
+function openVideo(url, label) {
+  const v = document.createElement("video");
+  v.muted = true; v.loop = true; v.playsInline = true; v.src = url;
+  v.onloadeddata = () => {
+    v.play();
+    // some WebM files (e.g. recorded in a browser) don't store their length: then say "video" and record 6 s
+    const known = Number.isFinite(v.duration);
+    ready({ kind: "video", w: v.videoWidth, h: v.videoHeight, duration: known ? v.duration : undefined, draw: () => v, pause: (p) => (p ? v.pause() : v.play()), stop: () => v.pause() },
+      label || (known ? `video · ${v.duration.toFixed(1)} s` : "video"));
+  };
+  v.onerror = () => message("That video couldn't be played by your browser. MP4 (H.264) and WebM work best.");
+}
+
+function openFile(f) {
+  if (!f) return;
+  stopCurrent();
+  if (f.type === "image/gif") openGif(f);
+  else if (f.type.startsWith("video/")) openVideo(URL.createObjectURL(f));
+  else if (f.type.startsWith("image/")) openImage(URL.createObjectURL(f));
+  else message("That file type isn't supported. Try a picture, a GIF or a video.");
+}
+
+$("pick").onclick = () => $("file").click();
+$("file").onchange = (e) => openFile(e.target.files[0]);
+addEventListener("dragover", (e) => { e.preventDefault(); document.body.classList.add("dragging"); });
+addEventListener("dragleave", (e) => { if (!e.relatedTarget) document.body.classList.remove("dragging"); });
+addEventListener("drop", (e) => { e.preventDefault(); document.body.classList.remove("dragging"); openFile(e.dataTransfer.files[0]); });
+addEventListener("paste", (e) => openFile([...e.clipboardData.files][0]));
+
+$("cam").onclick = async () => {
+  stopCurrent();
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+    const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.srcObject = camStream;
+    await v.play();
+    ready({ kind: "video", w: v.videoWidth, h: v.videoHeight, draw: () => v, pause: (p) => (p ? v.pause() : v.play()) }, "webcam (stays on your device)");
+  } catch (e) { message("No camera access: " + (e.name === "NotAllowedError" ? "permission was refused." : e.message)); }
+};
+
+$("play").onclick = () => { paused = !paused; source && source.pause && source.pause(paused); $("play").textContent = paused ? "Play" : "Pause"; };
+
+// A sample drawn in code (no file needed): a glowing sunset over a city.
+$("sample").onclick = () => {
+  stopCurrent();
+  const c = document.createElement("canvas"); c.width = 640; c.height = 400;
+  const g = c.getContext("2d");
+  const sky = g.createLinearGradient(0, 0, 0, 400); sky.addColorStop(0, "#1b1040"); sky.addColorStop(0.55, "#d9468f"); sky.addColorStop(1, "#ffc46b");
+  g.fillStyle = sky; g.fillRect(0, 0, 640, 400);
+  const sun = g.createRadialGradient(440, 250, 10, 440, 250, 110); sun.addColorStop(0, "#fff6c8"); sun.addColorStop(1, "rgba(255,226,122,0)");
+  g.fillStyle = sun; g.beginPath(); g.arc(440, 250, 110, 0, 7); g.fill();
+  g.fillStyle = "#1a0b33"; for (let x = 0; x < 640; x += 46) { const h = 40 + ((x * 37) % 90); g.fillRect(x, 400 - h, 42, h); }
+  openImage(c.toDataURL());
+};
+
+// ---------- controls ----------
+for (const id of ["cols", "con", "bri", "inv"]) $(id).addEventListener("input", () => sample(performance.now()));
+$("set").onchange = () => { $("custom").hidden = $("set").value !== "custom"; };
+const show = () => { $("colsV").textContent = $("cols").value; $("conV").textContent = $("con").value + "%"; $("briV").textContent = $("bri").value; $("glowV").textContent = $("glow").value; $("spdV").textContent = (+$("spd").value / 10).toFixed(1) + "x"; };
+document.querySelectorAll("input").forEach((i) => i.addEventListener("input", show)); show();
+
+// ---------- saving ----------
+const download = (blob, name) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); };
+$("png").onclick = () => cells && out.toBlob((b) => download(b, "ascii.png"));
+$("rec").onclick = () => {
+  if (!cells) return;
+  // record one full loop of a GIF/video (max 20 s), or 6 s otherwise
+  const secs = source.duration ? Math.min(20, source.duration) : 6;
+  const type = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
+  const rec = new MediaRecorder(out.captureStream(30), { mimeType: type }), parts = [];
+  rec.ondataavailable = (e) => parts.push(e.data);
+  rec.onstop = () => { download(new Blob(parts, { type: "video/webm" }), "ascii.webm"); $("rec").textContent = "Record video (WebM)"; $("rec").disabled = false; };
+  rec.start(); $("rec").textContent = `Recording ${secs.toFixed(0)} s…`; $("rec").disabled = true;
+  setTimeout(() => rec.stop(), secs * 1000);
+};
+// SVG: the current frame as colored text, with a CSS shimmer so it still moves as an image.
+$("svg").onclick = () => {
+  if (!cells) return;
+  const set = charset(), n = set.length - 1, cw = 6.6, lh = 12;
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const toHex = (c) => c.replace(/rgba?\(([^)]+)\)/, (m, v) => "#" + v.split(",").slice(0, 3).map((k) => (+k).toString(16).padStart(2, "0")).join(""));
+  let rows = "";
+  for (let y = 0; y < ROWS; y++) {
+    let t = "", run = "", col = null;
+    const flush = () => { if (run) t += col ? `<tspan fill="${col}">${esc(run)}</tspan>` : esc(run); run = ""; };
+    for (let x = 0; x < COLS; x++) {
+      const cell = cells[y * COLS + x], ch = set[Math.round(cell.l * n)] || " ";
+      const c = ch === " " ? null : toHex(colorOf(cell, cell.l));
+      if (c !== col) { flush(); col = c; } run += ch;
+    }
+    flush();
+    rows += `<text x="0" y="${(y + 1) * lh}" textLength="${COLS * cw}" lengthAdjust="spacingAndGlyphs" style="animation-delay:${(y * 0.04).toFixed(2)}s">${t}</text>`;
+  }
+  const W = COLS * cw, H = ROWS * lh + 4;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><style>text{font:700 ${lh}px ui-monospace,Consolas,monospace;white-space:pre;animation:sh 3s ease-in-out infinite}@keyframes sh{0%,100%{opacity:1}50%{opacity:.6}}</style><rect width="${W}" height="${H}" fill="${$("bg").value}"/>${rows}</svg>`;
+  download(new Blob([svg], { type: "image/svg+xml" }), "ascii.svg");
+};
+</script>
+</body>
+</html>
