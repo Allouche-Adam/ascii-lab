@@ -43,6 +43,14 @@
   body.dragging #drop { border-color: var(--accent); color: var(--text); display: grid !important; }
   .credit { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
   .credit a { color: var(--text); }
+  /* thank-you popup after a download (the download has already started: it never blocks) */
+  #thanks { position: fixed; inset: 0; background: rgba(5, 5, 9, .72); display: grid; place-items: center; z-index: 10; padding: 16px; }
+  #thanks .box { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px 24px 20px; max-width: 380px; text-align: center; display: grid; gap: 12px; }
+  #thanks .big { font: 700 20px ui-monospace, Consolas, monospace; }
+  #thanks p { margin: 0; color: var(--muted); }
+  #thanks a.coffee { display: block; background: #ffdd00; color: #0b0b10; font-weight: 700; font-size: 15px; text-decoration: none; padding: 12px; border-radius: 12px; }
+  #thanks a.coffee:hover { filter: brightness(1.05); }
+  #thanks button.later { background: none; border: 0; color: var(--muted); font-weight: 500; text-decoration: underline; }
   @media (max-width: 800px) {
     body { grid-template-columns: 1fr; }
     aside { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); order: 2; }
@@ -116,6 +124,14 @@
   <canvas id="out" aria-label="ASCII art output"></canvas>
   <div id="drop"><div><big>drop a picture, GIF or video</big>or press “Open file”, “Use webcam” or “Try a sample”</div></div>
 </main>
+<div id="thanks" hidden role="dialog" aria-modal="true" aria-labelledby="thanksTitle">
+  <div class="box">
+    <div class="big" id="thanksTitle">your ASCII art is downloading ✨</div>
+    <p>ASCII Lab is free, with no ads and no account, made by one student. If it made you smile, a coffee helps me keep building things like this.</p>
+    <a class="coffee" href="https://buymeacoffee.com/thock" target="_blank" rel="noopener">☕ Buy me a coffee</a>
+    <button class="later" id="later">maybe later</button>
+  </div>
+</div>
 
 <script>
 // ---------- how it works ----------
@@ -318,7 +334,15 @@ const show = () => { $("colsV").textContent = $("cols").value; $("conV").textCon
 document.querySelectorAll("input").forEach((i) => i.addEventListener("input", show)); show();
 
 // ---------- saving ----------
-const download = (blob, name) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); };
+// The file downloads right away; THEN a thank-you note suggests a coffee.
+// It never blocks or delays the download: the tool is free, and it should feel that way.
+const download = (blob, name) => {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  $("thanks").hidden = false;
+};
+$("later").onclick = () => { $("thanks").hidden = true; };
+$("thanks").onclick = (e) => { if (e.target === $("thanks")) $("thanks").hidden = true; };
+addEventListener("keydown", (e) => { if (e.key === "Escape") $("thanks").hidden = true; });
 $("png").onclick = () => cells && out.toBlob((b) => download(b, "ascii.png"));
 $("rec").onclick = () => {
   if (!cells) return;
