@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.1.0 — 2026-11-17
+- "Paste" button reads a picture from the clipboard (with a clear message if there's none); the start screen now says you can drop or paste (Ctrl+V).
 - After any download (PNG, SVG or video), a thank-you popup suggests buying a coffee. The download has already started; "maybe later", Escape or a click outside closes it.
 
 ## 1.0.0 — 2026-11-17

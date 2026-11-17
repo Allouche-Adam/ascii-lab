@@ -66,8 +66,9 @@
   </div>
   <div class="grid2">
     <button class="main" id="pick">Open file</button>
+    <button id="paste">Paste</button>
     <button id="cam">Use webcam</button>
-    <button id="sample" style="grid-column:span 2">Try a sample</button>
+    <button id="sample">Try a sample</button>
   </div>
   <input type="file" id="file" accept="image/*,video/*" hidden>
   <p class="msg" id="msg" hidden></p>
@@ -122,7 +123,7 @@
 </aside>
 <main>
   <canvas id="out" aria-label="ASCII art output"></canvas>
-  <div id="drop"><div><big>drop a picture, GIF or video</big>or press “Open file”, “Use webcam” or “Try a sample”</div></div>
+  <div id="drop"><div><big>drop or paste a picture, GIF or video</big>Ctrl+V to paste · or press “Open file”, “Paste”, “Use webcam” or “Try a sample”</div></div>
 </main>
 <div id="thanks" hidden role="dialog" aria-modal="true" aria-labelledby="thanksTitle">
   <div class="box">
@@ -301,6 +302,16 @@ addEventListener("dragover", (e) => { e.preventDefault(); document.body.classLis
 addEventListener("dragleave", (e) => { if (!e.relatedTarget) document.body.classList.remove("dragging"); });
 addEventListener("drop", (e) => { e.preventDefault(); document.body.classList.remove("dragging"); openFile(e.dataTransfer.files[0]); });
 addEventListener("paste", (e) => openFile([...e.clipboardData.files][0]));
+// The Paste button reads an image from the clipboard (the browser asks permission the first time).
+$("paste").onclick = async () => {
+  try {
+    for (const item of await navigator.clipboard.read()) {
+      const type = item.types.find((t) => t.startsWith("image/"));
+      if (type) { const blob = await item.getType(type); return openFile(new File([blob], "pasted", { type })); }
+    }
+    message("No picture in your clipboard. Copy an image first (or a screenshot), then press Paste.");
+  } catch (e) { message("Your browser didn't allow reading the clipboard. Press Ctrl+V on the page instead."); }
+};
 
 $("cam").onclick = async () => {
   stopCurrent();
