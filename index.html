@@ -43,14 +43,22 @@
   body.dragging #drop { border-color: var(--accent); color: var(--text); display: grid !important; }
   .credit { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
   .credit a { color: var(--text); }
-  /* thank-you popup after a download (the download has already started: it never blocks) */
-  #thanks { position: fixed; inset: 0; background: rgba(5, 5, 9, .72); display: grid; place-items: center; z-index: 10; padding: 16px; }
-  #thanks .box { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px 24px 20px; max-width: 380px; text-align: center; display: grid; gap: 12px; }
-  #thanks .big { font: 700 20px ui-monospace, Consolas, monospace; }
-  #thanks p { margin: 0; color: var(--muted); }
-  #thanks a.coffee { display: block; background: #ffdd00; color: #0b0b10; font-weight: 700; font-size: 15px; text-decoration: none; padding: 12px; border-radius: 12px; }
-  #thanks a.coffee:hover { filter: brightness(1.05); }
-  #thanks button.later { background: none; border: 0; color: var(--muted); font-weight: 500; text-decoration: underline; }
+  #dl { width: 100%; padding: 14px; font-size: 15px; letter-spacing: .3px; }
+  /* save popup: the formats are free to click; the coffee is a friendly ask next to them */
+  #save { position: fixed; inset: 0; background: rgba(5, 5, 9, .72); display: grid; place-items: center; z-index: 10; padding: 16px; }
+  #save .box { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 24px 22px 20px; width: 100%; max-width: 400px; display: grid; gap: 12px; }
+  #save .big { font: 700 19px ui-monospace, Consolas, monospace; text-align: center; }
+  #save p { margin: 0; color: var(--muted); text-align: center; }
+  #save .fmt { display: grid; gap: 8px; }
+  /* quiet but clearly clickable (not "disabled"-looking): the coffee is the bright one */
+  #save .fmt button { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; font-size: 13px; background: transparent; color: var(--muted); font-weight: 600; }
+  #save .fmt button:hover { color: var(--text); border-color: var(--muted); }
+  #save .fmt button span { color: var(--muted); font-weight: 500; font-size: 12px; }
+  #save .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+  #save .or::before, #save .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  #save a.coffee { display: block; text-align: center; background: #ffdd00; color: #0b0b10; font-weight: 700; font-size: 15px; text-decoration: none; padding: 12px; border-radius: 12px; }
+  #save a.coffee:hover { filter: brightness(1.05); }
+  #save .x { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; padding: 0; border-radius: 8px; background: none; border: 0; color: var(--muted); font-size: 18px; }
   @media (max-width: 800px) {
     body { grid-template-columns: 1fr; }
     aside { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); order: 2; }
@@ -113,11 +121,7 @@
   </label>
   <label><b>Speed <span id="spdV"></span></b><input type="range" id="spd" min="1" max="30" value="10"></label>
   <div class="sep"></div>
-  <div class="grid2">
-    <button id="png">Save PNG</button>
-    <button id="svg">Save SVG</button>
-    <button id="rec" style="grid-column:span 2">Record video (WebM)</button>
-  </div>
+  <button class="main" id="dl">⬇ Download</button>
   <p class="note">Drag a file anywhere, or paste an image with Ctrl+V.</p>
   <div class="credit">Made by <b>Adam Allouche</b> · <a href="https://github.com/Allouche-Adam" target="_blank" rel="noopener">GitHub</a> · <a href="https://buymeacoffee.com/thock" target="_blank" rel="noopener">buy me a coffee</a></div>
 </aside>
@@ -125,12 +129,18 @@
   <canvas id="out" aria-label="ASCII art output"></canvas>
   <div id="drop"><div><big>drop or paste a picture, GIF or video</big>Ctrl+V to paste · or press “Open file”, “Paste”, “Use webcam” or “Try a sample”</div></div>
 </main>
-<div id="thanks" hidden role="dialog" aria-modal="true" aria-labelledby="thanksTitle">
+<div id="save" hidden role="dialog" aria-modal="true" aria-labelledby="saveTitle">
   <div class="box">
-    <div class="big" id="thanksTitle">your ASCII art is downloading ✨</div>
-    <p>ASCII Lab is free, with no ads and no account, made by one student. If it made you smile, a coffee helps me keep building things like this.</p>
+    <button class="x" id="closeSave" aria-label="Close">✕</button>
+    <div class="big" id="saveTitle">save your ASCII art ✨</div>
+    <p>Made by one student, no ads, no account. If ASCII Lab made you smile, a coffee keeps it going.</p>
     <a class="coffee" href="https://buymeacoffee.com/thock" target="_blank" rel="noopener">☕ Buy me a coffee</a>
-    <button class="later" id="later">maybe later</button>
+    <div class="or">or just download it, free</div>
+    <div class="fmt">
+      <button id="png">Image <span>PNG</span></button>
+      <button id="svg">Animated image <span>SVG · works in GitHub READMEs</span></button>
+      <button id="rec">Video <span id="recLen">WebM</span></button>
+    </div>
   </div>
 </div>
 
@@ -345,25 +355,27 @@ const show = () => { $("colsV").textContent = $("cols").value; $("conV").textCon
 document.querySelectorAll("input").forEach((i) => i.addEventListener("input", show)); show();
 
 // ---------- saving ----------
-// The file downloads right away; THEN a thank-you note suggests a coffee.
-// It never blocks or delays the download: the tool is free, and it should feel that way.
-const download = (blob, name) => {
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click();
-  $("thanks").hidden = false;
+// One big Download button opens the save popup: a coffee ask on top, the free formats below.
+const download = (blob, name) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); };
+const videoSecs = () => (source && source.duration ? Math.min(20, source.duration) : 6); // one GIF/video loop (max 20 s), or 6 s
+const closeSave = () => { $("save").hidden = true; };
+$("dl").onclick = () => {
+  if (!cells) { message("Open a picture, GIF, video or the webcam first, then download."); return; }
+  $("recLen").textContent = `WebM · ${videoSecs().toFixed(0)} s`;
+  $("save").hidden = false;
 };
-$("later").onclick = () => { $("thanks").hidden = true; };
-$("thanks").onclick = (e) => { if (e.target === $("thanks")) $("thanks").hidden = true; };
-addEventListener("keydown", (e) => { if (e.key === "Escape") $("thanks").hidden = true; });
-$("png").onclick = () => cells && out.toBlob((b) => download(b, "ascii.png"));
+$("closeSave").onclick = closeSave;
+$("save").onclick = (e) => { if (e.target === $("save")) closeSave(); };
+addEventListener("keydown", (e) => { if (e.key === "Escape") closeSave(); });
+$("png").onclick = () => { out.toBlob((b) => download(b, "ascii.png")); closeSave(); };
 $("rec").onclick = () => {
-  if (!cells) return;
-  // record one full loop of a GIF/video (max 20 s), or 6 s otherwise
-  const secs = source.duration ? Math.min(20, source.duration) : 6;
+  closeSave();
+  const secs = videoSecs();
   const type = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
   const rec = new MediaRecorder(out.captureStream(30), { mimeType: type }), parts = [];
   rec.ondataavailable = (e) => parts.push(e.data);
-  rec.onstop = () => { download(new Blob(parts, { type: "video/webm" }), "ascii.webm"); $("rec").textContent = "Record video (WebM)"; $("rec").disabled = false; };
-  rec.start(); $("rec").textContent = `Recording ${secs.toFixed(0)} s…`; $("rec").disabled = true;
+  rec.onstop = () => { download(new Blob(parts, { type: "video/webm" }), "ascii.webm"); $("dl").textContent = "⬇ Download"; $("dl").disabled = false; };
+  rec.start(); $("dl").textContent = `● Recording ${secs.toFixed(0)} s…`; $("dl").disabled = true;
   setTimeout(() => rec.stop(), secs * 1000);
 };
 // SVG: the current frame as colored text, with a CSS shimmer so it still moves as an image.
@@ -387,6 +399,7 @@ $("svg").onclick = () => {
   const W = COLS * cw, H = ROWS * lh + 4;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><style>text{font:700 ${lh}px ui-monospace,Consolas,monospace;white-space:pre;animation:sh 3s ease-in-out infinite}@keyframes sh{0%,100%{opacity:1}50%{opacity:.6}}</style><rect width="${W}" height="${H}" fill="${$("bg").value}"/>${rows}</svg>`;
   download(new Blob([svg], { type: "image/svg+xml" }), "ascii.svg");
+  closeSave();
 };
 </script>
 </body>

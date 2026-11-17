@@ -1,9 +1,9 @@
 # Decisions
 
-## 2026-11-17 — Donation prompt after downloads, never before
-- **Chosen:** the file downloads first, then a thank-you popup with a Buy Me a Coffee button and a "maybe later" link.
-- **Why:** asking right after someone made something they like works, and nobody feels tricked.
-- **Rejected:** making the donation look required to download (a dark pattern: hurts trust in the author's name, and donations obtained by misleading people can be disputed).
+## 2026-11-17 — Donation ask inside the save popup
+- **Chosen:** one Download button opens a popup with the coffee button on top in bright yellow, and the free formats below in quiet (outlined, muted) but clearly clickable buttons under "or just download it, free".
+- **Why:** the coffee gets the attention at the moment people are happiest with their result; downloading stays obviously free.
+- **Rejected:** formats that look disabled or a donation that looks required (a dark pattern: damages trust in the author's name, and misled donations can be disputed). **Replaces** the earlier after-download thank-you popup (asking twice in a row felt pushy).
 
 ## 2026-11-17 — Everything runs in the browser
 - **Chosen:** one `index.html`, no server, no libraries. Files and the webcam never leave the visitor's device.
